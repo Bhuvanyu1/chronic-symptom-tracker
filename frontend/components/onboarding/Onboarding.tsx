@@ -7,21 +7,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useUser } from '../../contexts/UserContext';
 import { useToast } from '@/components/ui/use-toast';
-import { Activity, Clock, User, Heart } from 'lucide-react';
-
-const commonConditions = [
-  'Chronic Pain',
-  'Fibromyalgia',
-  'Arthritis',
-  'Migraine',
-  'Depression',
-  'Anxiety',
-  'Chronic Fatigue',
-  'IBS',
-  'Lupus',
-  'Multiple Sclerosis',
-  'Other'
-];
+import { Activity, User, Heart } from 'lucide-react';
+import { COMMON_CONDITIONS, TIME_OPTIONS } from '../../utils/constants';
 
 export default function Onboarding() {
   const [step, setStep] = useState(1);
@@ -113,14 +100,11 @@ export default function Onboarding() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="07:00">7:00 AM</SelectItem>
-                    <SelectItem value="08:00">8:00 AM</SelectItem>
-                    <SelectItem value="09:00">9:00 AM</SelectItem>
-                    <SelectItem value="10:00">10:00 AM</SelectItem>
-                    <SelectItem value="18:00">6:00 PM</SelectItem>
-                    <SelectItem value="19:00">7:00 PM</SelectItem>
-                    <SelectItem value="20:00">8:00 PM</SelectItem>
-                    <SelectItem value="21:00">9:00 PM</SelectItem>
+                    {TIME_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -143,7 +127,7 @@ export default function Onboarding() {
               </p>
               
               <div className="space-y-3 max-h-64 overflow-y-auto">
-                {commonConditions.map((condition) => (
+                {COMMON_CONDITIONS.map((condition) => (
                   <div key={condition} className="flex items-center space-x-2">
                     <Checkbox
                       id={condition}

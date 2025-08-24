@@ -7,30 +7,25 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useUser } from '../../contexts/UserContext';
 import { useToast } from '@/components/ui/use-toast';
+import { useNotifications } from '../../hooks/useNotifications';
 import { Settings as SettingsIcon, User, Bell, Trash2 } from 'lucide-react';
-
-const commonConditions = [
-  'Chronic Pain',
-  'Fibromyalgia',
-  'Arthritis',
-  'Migraine',
-  'Depression',
-  'Anxiety',
-  'Chronic Fatigue',
-  'IBS',
-  'Lupus',
-  'Multiple Sclerosis',
-  'Other'
-];
+import { COMMON_CONDITIONS, TIME_OPTIONS } from '../../utils/constants';
+import backend from '~backend/client';
 
 export default function Settings() {
   const { user, setUser } = useUser();
   const { toast } = useToast();
+  const { supported, permission, requestPermission, scheduleDaily, sendCheckInReminder } = useNotifications();
   const [formData, setFormData] = useState({
     name: user?.name || '',
     conditions: user?.conditions || [],
     checkInTime: user?.checkInTime || '09:00'
   });
+  const [notificationSettings, setNotificationSettings] = useState({
+    dailyReminders: false,
+    weeklyReports: false,
+  });
+  const [saving, setSaving] = useState(false);
 
   const handleConditionChange = (condition: string, checked: boolean) => {
     setFormData(prev => ({
@@ -42,20 +37,55 @@ export default function Settings() {
   };
 
   const handleSave = async () => {
-    // In a real app, this would update the user via API
-    // For now, we'll just update the local state
-    if (user) {
-      const updatedUser = {
-        ...user,
+    if (!user) return;
+
+    setSaving(true);
+    try {
+      const updatedUser = await backend.symptom.updateUser({
+        id: user.id,
         name: formData.name,
         conditions: formData.conditions,
         checkInTime: formData.checkInTime
-      };
+      });
+      
       setUser(updatedUser);
       
       toast({
         title: "Settings saved",
         description: "Your preferences have been updated successfully."
+      });
+    } catch (error) {
+      console.error('Failed to update user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save settings. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleNotificationToggle = async (type: 'dailyReminders' | 'weeklyReports', enabled: boolean) => {
+    if (enabled && permission !== 'granted') {
+      const granted = await requestPermission();
+      if (!granted) {
+        toast({
+          title: "Permission denied",
+          description: "Please enable notifications in your browser settings.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
+    setNotificationSettings(prev => ({ ...prev, [type]: enabled }));
+
+    if (type === 'dailyReminders' && enabled) {
+      scheduleDaily(formData.checkInTime, sendCheckInReminder);
+      toast({
+        title: "Notifications enabled",
+        description: `You'll receive daily reminders at ${formData.checkInTime}.`
       });
     }
   };
@@ -67,6 +97,22 @@ export default function Settings() {
       toast({
         title: "Data cleared",
         description: "All your data has been removed."
+      });
+    }
+  };
+
+  const testNotification = () => {
+    if (permission === 'granted') {
+      sendCheckInReminder();
+      toast({
+        title: "Test notification sent",
+        description: "Check if you received the notification."
+      });
+    } else {
+      toast({
+        title: "Notifications not enabled",
+        description: "Please enable notifications first.",
+        variant: "destructive"
       });
     }
   };
@@ -103,14 +149,11 @@ export default function Settings() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="07:00">7:00 AM</SelectItem>
-                <SelectItem value="08:00">8:00 AM</SelectItem>
-                <SelectItem value="09:00">9:00 AM</SelectItem>
-                <SelectItem value="10:00">10:00 AM</SelectItem>
-                <SelectItem value="18:00">6:00 PM</SelectItem>
-                <SelectItem value="19:00">7:00 PM</SelectItem>
-                <SelectItem value="20:00">8:00 PM</SelectItem>
-                <SelectItem value="21:00">9:00 PM</SelectItem>
+                {TIME_OPTIONS.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -118,7 +161,7 @@ export default function Settings() {
           <div className="space-y-3">
             <Label>Conditions to Track</Label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {commonConditions.map((condition) => (
+              {COMMON_CONDITIONS.map((condition) => (
                 <div key={condition} className="flex items-center space-x-2">
                   <Checkbox
                     id={condition}
@@ -131,7 +174,9 @@ export default function Settings() {
             </div>
           </div>
 
-          <Button onClick={handleSave}>Save Changes</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save Changes'}
+          </Button>
         </CardContent>
       </Card>
 
@@ -145,20 +190,53 @@ export default function Settings() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {!supported && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-sm text-yellow-800">
+                  Notifications are not supported in your browser.
+                </p>
+              </div>
+            )}
+            
+            {supported && permission === 'denied' && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-800">
+                  Notifications are blocked. Please enable them in your browser settings.
+                </p>
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Daily Check-in Reminders</p>
                 <p className="text-sm text-gray-600">Get reminded to complete your daily symptom check-in</p>
               </div>
-              <Checkbox />
+              <Checkbox
+                checked={notificationSettings.dailyReminders}
+                onCheckedChange={(checked) => handleNotificationToggle('dailyReminders', checked as boolean)}
+                disabled={!supported}
+              />
             </div>
+            
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Weekly Reports</p>
                 <p className="text-sm text-gray-600">Receive weekly summaries of your symptom patterns</p>
               </div>
-              <Checkbox />
+              <Checkbox
+                checked={notificationSettings.weeklyReports}
+                onCheckedChange={(checked) => handleNotificationToggle('weeklyReports', checked as boolean)}
+                disabled={!supported}
+              />
             </div>
+
+            {supported && (
+              <div className="pt-4 border-t">
+                <Button variant="outline" onClick={testNotification} size="sm">
+                  Test Notification
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
