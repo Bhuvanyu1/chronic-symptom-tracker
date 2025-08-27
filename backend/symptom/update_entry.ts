@@ -41,12 +41,19 @@ export const updateEntry = api<UpdateEntryRequest, SymptomEntry>(
       throw APIError.notFound("entry not found");
     }
 
-    await symptomDB.exec`
-      UPDATE symptom_entries
-      SET pain = ${pain}, mood = ${mood}, energy = ${energy}, sleep = ${sleep},
-          notes = ${req.notes || null}, triggers = ${req.triggers}
-      WHERE id = ${req.id}
-    `;
+    // Use rawExec with proper PostgreSQL array syntax
+    await symptomDB.rawExec(
+      `UPDATE symptom_entries
+       SET pain = $1, mood = $2, energy = $3, sleep = $4, notes = $5, triggers = $6
+       WHERE id = $7`,
+      pain,
+      mood,
+      energy,
+      sleep,
+      req.notes || null,
+      req.triggers,
+      req.id
+    );
 
     return {
       id: existingEntry.id,

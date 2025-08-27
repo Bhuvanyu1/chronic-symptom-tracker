@@ -22,11 +22,16 @@ export const updateUser = api<UpdateUserRequest, User>(
       throw APIError.notFound("user not found");
     }
 
-    await symptomDB.exec`
-      UPDATE users
-      SET name = ${req.name}, conditions = ${req.conditions}, check_in_time = ${req.checkInTime}
-      WHERE id = ${req.id}
-    `;
+    // Use rawExec with proper PostgreSQL array syntax
+    await symptomDB.rawExec(
+      `UPDATE users
+       SET name = $1, conditions = $2, check_in_time = $3
+       WHERE id = $4`,
+      req.name,
+      req.conditions,
+      req.checkInTime,
+      req.id
+    );
 
     return {
       id: req.id,

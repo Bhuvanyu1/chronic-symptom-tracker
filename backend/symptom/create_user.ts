@@ -9,10 +9,16 @@ export const createUser = api<CreateUserRequest, User>(
     const id = crypto.randomUUID();
     const joinDate = new Date().toISOString();
 
-    await symptomDB.exec`
-      INSERT INTO users (id, name, conditions, check_in_time, join_date)
-      VALUES (${id}, ${req.name}, ${req.conditions}, ${req.checkInTime}, ${joinDate})
-    `;
+    // Use rawExec with proper PostgreSQL array syntax
+    await symptomDB.rawExec(
+      `INSERT INTO users (id, name, conditions, check_in_time, join_date)
+       VALUES ($1, $2, $3, $4, $5)`,
+      id,
+      req.name,
+      req.conditions,
+      req.checkInTime,
+      joinDate
+    );
 
     return {
       id,

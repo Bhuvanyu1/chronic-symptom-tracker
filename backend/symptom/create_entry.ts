@@ -25,14 +25,24 @@ export const createEntry = api<CreateEntryRequest, SymptomEntry>(
     const timestamp = Date.now();
 
     try {
-      await symptomDB.exec`
-        INSERT INTO symptom_entries (
+      // Use rawExec with proper PostgreSQL array syntax
+      await symptomDB.rawExec(
+        `INSERT INTO symptom_entries (
           id, user_id, date, timestamp, pain, mood, energy, sleep, notes, triggers
         ) VALUES (
-          ${id}, ${req.userId}, ${req.date}, ${timestamp}, 
-          ${pain}, ${mood}, ${energy}, ${sleep}, ${req.notes || null}, ${req.triggers}
-        )
-      `;
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+        )`,
+        id,
+        req.userId,
+        req.date,
+        timestamp,
+        pain,
+        mood,
+        energy,
+        sleep,
+        req.notes || null,
+        req.triggers
+      );
     } catch (err) {
       if (err instanceof Error && err.message.includes('unique constraint')) {
         throw APIError.alreadyExists("entry for this date already exists");
