@@ -41,13 +41,10 @@ export const updateEntry = api<UpdateEntryRequest, SymptomEntry>(
       throw APIError.notFound("entry not found");
     }
 
-    // Convert triggers array to PostgreSQL array format
-    const triggersArray = `{${req.triggers.map(t => `"${t.replace(/"/g, '\\"')}"`).join(',')}}`;
-
     await symptomDB.exec`
       UPDATE symptom_entries
       SET pain = ${pain}, mood = ${mood}, energy = ${energy}, sleep = ${sleep},
-          notes = ${req.notes || null}, triggers = ${triggersArray}
+          notes = ${req.notes || null}, triggers = ${req.triggers}
       WHERE id = ${req.id}
     `;
 
