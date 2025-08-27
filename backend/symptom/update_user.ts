@@ -22,9 +22,12 @@ export const updateUser = api<UpdateUserRequest, User>(
       throw APIError.notFound("user not found");
     }
 
+    // Convert conditions array to PostgreSQL array format
+    const conditionsArray = `{${req.conditions.map(c => `"${c.replace(/"/g, '\\"')}"`).join(',')}}`;
+
     await symptomDB.exec`
       UPDATE users
-      SET name = ${req.name}, conditions = ${req.conditions}, check_in_time = ${req.checkInTime}
+      SET name = ${req.name}, conditions = ${conditionsArray}, check_in_time = ${req.checkInTime}
       WHERE id = ${req.id}
     `;
 

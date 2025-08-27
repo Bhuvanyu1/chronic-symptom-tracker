@@ -24,13 +24,16 @@ export const createEntry = api<CreateEntryRequest, SymptomEntry>(
     const id = crypto.randomUUID();
     const timestamp = Date.now();
 
+    // Convert triggers array to PostgreSQL array format
+    const triggersArray = `{${req.triggers.map(t => `"${t.replace(/"/g, '\\"')}"`).join(',')}}`;
+
     try {
       await symptomDB.exec`
         INSERT INTO symptom_entries (
           id, user_id, date, timestamp, pain, mood, energy, sleep, notes, triggers
         ) VALUES (
           ${id}, ${req.userId}, ${req.date}, ${timestamp}, 
-          ${pain}, ${mood}, ${energy}, ${sleep}, ${req.notes || null}, ${req.triggers}
+          ${pain}, ${mood}, ${energy}, ${sleep}, ${req.notes || null}, ${triggersArray}
         )
       `;
     } catch (err) {

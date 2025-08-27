@@ -9,9 +9,12 @@ export const createUser = api<CreateUserRequest, User>(
     const id = crypto.randomUUID();
     const joinDate = new Date().toISOString();
 
+    // Convert conditions array to PostgreSQL array format
+    const conditionsArray = `{${req.conditions.map(c => `"${c.replace(/"/g, '\\"')}"`).join(',')}}`;
+
     await symptomDB.exec`
       INSERT INTO users (id, name, conditions, check_in_time, join_date)
-      VALUES (${id}, ${req.name}, ${req.conditions}, ${req.checkInTime}, ${joinDate})
+      VALUES (${id}, ${req.name}, ${conditionsArray}, ${req.checkInTime}, ${joinDate})
     `;
 
     return {
