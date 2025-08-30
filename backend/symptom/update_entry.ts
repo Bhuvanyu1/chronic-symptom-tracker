@@ -20,8 +20,12 @@ export const updateEntry = api<UpdateEntryRequest, SymptomEntry>(
   async (req) => {
     // Validate symptom values
     const { pain, mood, energy, sleep } = req.symptoms;
-    if (pain < 1 || pain > 10 || mood < 1 || mood > 10 || 
-        energy < 1 || energy > 10 || sleep < 1 || sleep > 10) {
+    if (
+      pain < 1 || pain > 10 ||
+      mood < 1 || mood > 10 ||
+      energy < 1 || energy > 10 ||
+      sleep < 1 || sleep > 10
+    ) {
       throw APIError.invalidArgument("symptom values must be between 1 and 10");
     }
 
@@ -41,10 +45,10 @@ export const updateEntry = api<UpdateEntryRequest, SymptomEntry>(
       throw APIError.notFound("entry not found");
     }
 
-    // Use rawExec with proper PostgreSQL array syntax
+    // Ensure triggers array is cast correctly
     await symptomDB.rawExec(
       `UPDATE symptom_entries
-       SET pain = $1, mood = $2, energy = $3, sleep = $4, notes = $5, triggers = $6
+       SET pain = $1, mood = $2, energy = $3, sleep = $4, notes = $5, triggers = $6::text[]
        WHERE id = $7`,
       pain,
       mood,

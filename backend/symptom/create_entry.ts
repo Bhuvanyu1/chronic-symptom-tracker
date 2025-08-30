@@ -8,8 +8,12 @@ export const createEntry = api<CreateEntryRequest, SymptomEntry>(
   async (req) => {
     // Validate symptom values
     const { pain, mood, energy, sleep } = req.symptoms;
-    if (pain < 1 || pain > 10 || mood < 1 || mood > 10 || 
-        energy < 1 || energy > 10 || sleep < 1 || sleep > 10) {
+    if (
+      pain < 1 || pain > 10 ||
+      mood < 1 || mood > 10 ||
+      energy < 1 || energy > 10 ||
+      sleep < 1 || sleep > 10
+    ) {
       throw APIError.invalidArgument("symptom values must be between 1 and 10");
     }
 
@@ -25,12 +29,12 @@ export const createEntry = api<CreateEntryRequest, SymptomEntry>(
     const timestamp = Date.now();
 
     try {
-      // Use rawExec with proper PostgreSQL array syntax
+      // Cast to correct Postgres types for date and text[].
       await symptomDB.rawExec(
         `INSERT INTO symptom_entries (
           id, user_id, date, timestamp, pain, mood, energy, sleep, notes, triggers
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+          $1, $2, $3::date, $4, $5, $6, $7, $8, $9, $10::text[]
         )`,
         id,
         req.userId,
@@ -44,7 +48,7 @@ export const createEntry = api<CreateEntryRequest, SymptomEntry>(
         req.triggers
       );
     } catch (err) {
-      if (err instanceof Error && err.message.includes('unique constraint')) {
+      if (err instanceof Error && err.message.includes("unique constraint")) {
         throw APIError.alreadyExists("entry for this date already exists");
       }
       throw err;
